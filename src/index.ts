@@ -8,8 +8,10 @@ import {
   toBookDetail,
   toSearchResult,
 } from "./client.js";
+import { EVENT_CATEGORY_SLUGS, EventsClient, toSearchEventsResult } from "./eventsClient.js";
 
 const client = new KvartiraBooksClient();
+const eventsClient = new EventsClient();
 
 const server = new McpServer({
   name: "kvartirabooks-mcp",
@@ -102,6 +104,74 @@ server.registerTool(
       }
       return {
         content: [{ type: "text", text: JSON.stringify(toBookDetail(product), null, 2) }],
+      };
+    } catch (err) {
+      return errorResult(err);
+    }
+  },
+);
+
+server.registerTool(
+  "search_events",
+  {
+    title: "Search events",
+    description:
+      "Search kvartirabooks.org's upcoming events (readings, book clubs, kids' events, etc). " +
+      "Only events that haven't happened yet are returned. Provide 'query', 'category', or both " +
+      "(omitting 'query' browses a category's full upcoming schedule).",
+    inputSchema: {
+      query: z.string().optional().describe("Search text: event title or description"),
+      category: z
+        .enum(EVENT_CATEGORY_SLUGS)
+        .optional()
+        .describe("Filter to one event category"),
+      page: z.number().int().min(1).default(1).describe("1-based page number"),
+      perPage: z
+        .number()
+        .int()
+        .min(1)
+        .max(100)
+        .default(10)
+        .describe("Results per page (max 100)"),
+    },
+  },
+  async ({ query, category, page, perPage }) => {
+    try {
+      const data = await eventsClient.searchEvents({ query, category, page, perPage });
+      const result = toSearchEventsResult(query ?? "", category ?? null, page, perPage, data);
+      return {
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+      };
+    } catch (err) {
+      return errorResult(err);
+    }
+  },
+);
+
+server.registerTool(
+  "get_event",
+  {
+    title: "Get event details",
+    description:
+      "Fetch full details for a single event by its numeric ID, including its full " +
+      "description. If the event is still upcoming, this also includes its 'schedule' " +
+      "(date, time, venue, prices); if the event has already happened, 'schedule' is null " +
+      "since kvartirabooks.org only publishes schedule data for upcoming events.",
+    inputSchema: {
+      id: z.number().int().positive().describe("Numeric event ID"),
+    },
+  },
+  async ({ id }) => {
+    try {
+      const detail = await eventsClient.getEventDetail(id);
+      if (!detail) {
+        return {
+          isError: true,
+          content: [{ type: "text", text: `No event found for id=${id}.` }],
+        };
+      }
+      return {
+        content: [{ type: "text", text: JSON.stringify(detail, null, 2) }],
       };
     } catch (err) {
       return errorResult(err);

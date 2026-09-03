@@ -5,18 +5,12 @@ import type {
   SearchResult,
   WcStoreProduct,
 } from "./types.js";
+import { KvartiraBooksApiError } from "./errors.js";
+import { decodeHtmlEntities, stripHtml } from "./html.js";
 
 const DEFAULT_BASE_URL = "https://kvartirabooks.org/wp-json/wc/store/v1";
 
-export class KvartiraBooksApiError extends Error {
-  constructor(
-    message: string,
-    public readonly status?: number,
-  ) {
-    super(message);
-    this.name = "KvartiraBooksApiError";
-  }
-}
+export { KvartiraBooksApiError };
 
 export interface KvartiraBooksClientOptions {
   baseUrl?: string;
@@ -101,20 +95,6 @@ function findAttribute(product: WcStoreProduct, taxonomy: string): string[] {
   return attr ? attr.terms.map((t) => t.name) : [];
 }
 
-function decodeHtmlEntities(input: string): string {
-  return input
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#0?39;/g, "'")
-    .replace(/&#8211;/g, "–")
-    .replace(/&#8212;/g, "—")
-    .replace(/&laquo;/g, "«")
-    .replace(/&raquo;/g, "»")
-    .replace(/&nbsp;/g, " ");
-}
-
 export function toBookSummary(product: WcStoreProduct): BookSummary {
   const price = Number(product.prices.price);
   return {
@@ -130,10 +110,6 @@ export function toBookSummary(product: WcStoreProduct): BookSummary {
     permalink: product.permalink,
     coverImage: product.images[0]?.src ?? null,
   };
-}
-
-function stripHtml(html: string): string {
-  return decodeHtmlEntities(html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ")).trim();
 }
 
 export function toBookDetail(product: WcStoreProduct): BookDetail {
