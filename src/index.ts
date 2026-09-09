@@ -9,9 +9,19 @@ import {
   toSearchResult,
 } from "./client.js";
 import { EVENT_CATEGORY_SLUGS, EventsClient, toSearchEventsResult } from "./eventsClient.js";
+import {
+  ORDER_STATUSES,
+  OrdersClient,
+  toCustomerOrdersResult,
+  toSearchCustomersResult,
+} from "./ordersClient.js";
 
 const client = new KvartiraBooksClient();
 const eventsClient = new EventsClient();
+const ordersClient = new OrdersClient({
+  consumerKey: process.env.WC_CONSUMER_KEY,
+  consumerSecret: process.env.WC_CONSUMER_SECRET,
+});
 
 const server = new McpServer({
   name: "kvartirabooks-mcp",
@@ -172,6 +182,69 @@ server.registerTool(
       }
       return {
         content: [{ type: "text", text: JSON.stringify(detail, null, 2) }],
+      };
+    } catch (err) {
+      return errorResult(err);
+    }
+  },
+);
+
+server.registerTool(
+  "search_customers",
+  {
+    title: "Search customers",
+    description:
+      "Look up a kvartirabooks.org customer by email (exact match) or name (fuzzy match), " +
+      "returning their numeric customer ID for use with get_customer_orders. Requires " +
+      "WC_CONSUMER_KEY/WC_CONSUMER_SECRET to be configured (WooCommerce Admin -> Settings -> " +
+      "Advanced -> REST API); this reveals customer PII, so it's for internal/store-owner use.",
+    inputSchema: {
+      query: z.string().min(1).describe("Customer email or name to search for"),
+    },
+  },
+  async ({ query }) => {
+    try {
+      const customers = await ordersClient.searchCustomers(query);
+      const result = toSearchCustomersResult(query, customers);
+      return {
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+      };
+    } catch (err) {
+      return errorResult(err);
+    }
+  },
+);
+
+server.registerTool(
+  "get_customer_orders",
+  {
+    title: "Get customer order history",
+    description:
+      "Fetch a customer's order history by numeric customer ID (from search_customers), " +
+      "including line items and each item's availability ('for_sale' vs 'for_borrow' based on " +
+      "its SKU). This store's library lending is implemented as orders with custom statuses: " +
+      "'books-on-hand' (currently checked out), 'returned', 'return-initiated', and " +
+      "'shipment-lost', alongside standard WooCommerce statuses like 'completed'. Requires " +
+      "WC_CONSUMER_KEY/WC_CONSUMER_SECRET to be configured.",
+    inputSchema: {
+      customerId: z.number().int().positive().describe("Numeric customer ID"),
+      status: z.enum(ORDER_STATUSES).optional().describe("Filter to one order status"),
+      page: z.number().int().min(1).default(1).describe("1-based page number"),
+      perPage: z
+        .number()
+        .int()
+        .min(1)
+        .max(100)
+        .default(10)
+        .describe("Results per page (max 100)"),
+    },
+  },
+  async ({ customerId, status, page, perPage }) => {
+    try {
+      const data = await ordersClient.getCustomerOrders(customerId, { status, page, perPage });
+      const result = toCustomerOrdersResult(customerId, status ?? null, page, perPage, data);
+      return {
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
       };
     } catch (err) {
       return errorResult(err);

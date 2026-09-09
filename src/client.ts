@@ -7,6 +7,7 @@ import type {
 } from "./types.js";
 import { KvartiraBooksApiError } from "./errors.js";
 import { decodeHtmlEntities, stripHtml } from "./html.js";
+import { deriveAvailabilityFromSku } from "./availability.js";
 
 const DEFAULT_BASE_URL = "https://kvartirabooks.org/wp-json/wc/store/v1";
 
@@ -83,9 +84,8 @@ export function deriveAvailability(product: WcStoreProduct): Availability {
   const tagSlugs = product.tags.map((t) => t.slug);
   if (tagSlugs.includes("library")) return "for_borrow";
   if (tagSlugs.includes("books-for-sale")) return "for_sale";
-  // Fall back to the SKU convention (borrow copies are suffixed "-L") and
-  // purchasability if tags are ever missing.
-  if (product.sku.endsWith("-L")) return "for_borrow";
+  // Fall back to the SKU convention and purchasability if tags are ever missing.
+  if (deriveAvailabilityFromSku(product.sku) === "for_borrow") return "for_borrow";
   if (product.is_purchasable) return "for_sale";
   return "unknown";
 }
