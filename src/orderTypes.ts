@@ -47,7 +47,10 @@ export interface WcCustomer {
   email: string;
   first_name: string;
   last_name: string;
+  date_created: string;
+  is_paying_customer: boolean;
   billing: WcAddress;
+  shipping: WcAddress;
 }
 
 // Simplified shapes returned by this MCP server's tools.
@@ -68,7 +71,7 @@ export interface OrderLineItem {
   availability: Availability;
 }
 
-export interface OrderShippingAddress {
+export interface PostalAddress {
   name: string;
   address1: string;
   address2: string;
@@ -76,6 +79,15 @@ export interface OrderShippingAddress {
   state: string;
   postcode: string;
   country: string;
+}
+
+export type OrderShippingAddress = PostalAddress;
+
+export interface CustomerDetail extends CustomerSummary {
+  isPayingCustomer: boolean;
+  dateCreated: string;
+  billingAddress: PostalAddress;
+  shippingAddress: PostalAddress;
 }
 
 export interface OrderSummary {

@@ -94,6 +94,30 @@ describe.skipIf(!canRun)("kvartirabooks.org live orders API", () => {
   );
 
   it(
+    "getCustomerById fetches the same account found via search, with its billing/shipping addresses",
+    async () => {
+      const client = new OrdersClient({ consumerKey, consumerSecret });
+      const recent = await findRecentOrderWithCustomer();
+
+      const wcCustomer = await client.getCustomerById(recent.customer_id);
+      expect(wcCustomer).not.toBeNull();
+      expect(wcCustomer!.id).toBe(recent.customer_id);
+      expect(wcCustomer!.billing).toBeDefined();
+      expect(wcCustomer!.shipping).toBeDefined();
+    },
+    15000,
+  );
+
+  it(
+    "getCustomerById returns null for a nonexistent customer ID",
+    async () => {
+      const client = new OrdersClient({ consumerKey, consumerSecret });
+      expect(await client.getCustomerById(999999999)).toBeNull();
+    },
+    15000,
+  );
+
+  it(
     "rejects with a 401-flavored error when given a bad credential pair",
     async () => {
       const badClient = new OrdersClient({ consumerKey: "ck_invalid", consumerSecret: "cs_invalid" });

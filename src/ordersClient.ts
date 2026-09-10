@@ -1,10 +1,12 @@
 import type {
+  CustomerDetail,
   CustomerOrdersResult,
   CustomerSummary,
   OrderLineItem,
-  OrderShippingAddress,
   OrderSummary,
+  PostalAddress,
   SearchCustomersResult,
+  WcAddress,
   WcCustomer,
   WcLineItem,
   WcOrder,
@@ -96,6 +98,22 @@ export class OrdersClient {
     return (await res.json()) as WcCustomer[];
   }
 
+  // GET /wc/v3/customers/{id}
+  async getCustomerById(id: number): Promise<WcCustomer | null> {
+    const url = `${this.baseUrl}/customers/${id}`;
+    const res = await this.fetchImpl(url, { headers: this.authHeaders() });
+    if (res.status === 404) {
+      return null;
+    }
+    if (!res.ok) {
+      throw new KvartiraBooksApiError(
+        `Get customer request failed: ${res.status} ${res.statusText}`,
+        res.status,
+      );
+    }
+    return (await res.json()) as WcCustomer;
+  }
+
   // GET /wc/v3/orders?customer=...&status=...
   async getCustomerOrders(
     customerId: number,
@@ -141,6 +159,16 @@ export function toSearchCustomersResult(query: string, customers: WcCustomer[]):
   };
 }
 
+export function toCustomerDetail(customer: WcCustomer): CustomerDetail {
+  return {
+    ...toCustomerSummary(customer),
+    isPayingCustomer: customer.is_paying_customer,
+    dateCreated: customer.date_created,
+    billingAddress: toPostalAddress(customer.billing),
+    shippingAddress: toPostalAddress(customer.shipping),
+  };
+}
+
 function toOrderLineItem(item: WcLineItem): OrderLineItem {
   return {
     productId: item.product_id,
@@ -152,8 +180,7 @@ function toOrderLineItem(item: WcLineItem): OrderLineItem {
   };
 }
 
-function toShippingAddress(order: WcOrder): OrderShippingAddress {
-  const addr = order.shipping.address_1 ? order.shipping : order.billing;
+function toPostalAddress(addr: WcAddress): PostalAddress {
   return {
     name: `${addr.first_name} ${addr.last_name}`.trim(),
     address1: addr.address_1,
@@ -163,6 +190,10 @@ function toShippingAddress(order: WcOrder): OrderShippingAddress {
     postcode: addr.postcode,
     country: addr.country,
   };
+}
+
+function toShippingAddress(order: WcOrder): PostalAddress {
+  return toPostalAddress(order.shipping.address_1 ? order.shipping : order.billing);
 }
 
 function toOrderSummary(order: WcOrder): OrderSummary {

@@ -12,6 +12,7 @@ import { EVENT_CATEGORY_SLUGS, EventsClient, toSearchEventsResult } from "./even
 import {
   ORDER_STATUSES,
   OrdersClient,
+  toCustomerDetail,
   toCustomerOrdersResult,
   toSearchCustomersResult,
 } from "./ordersClient.js";
@@ -195,9 +196,10 @@ server.registerTool(
     title: "Search customers",
     description:
       "Look up a kvartirabooks.org customer by email (exact match) or name (fuzzy match), " +
-      "returning their numeric customer ID for use with get_customer_orders. Requires " +
-      "WC_CONSUMER_KEY/WC_CONSUMER_SECRET to be configured (WooCommerce Admin -> Settings -> " +
-      "Advanced -> REST API); this reveals customer PII, so it's for internal/store-owner use.",
+      "returning their numeric customer ID for use with get_customer and get_customer_orders. " +
+      "Requires WC_CONSUMER_KEY/WC_CONSUMER_SECRET to be configured (WooCommerce Admin -> " +
+      "Settings -> Advanced -> REST API); this reveals customer PII, so it's for " +
+      "internal/store-owner use.",
     inputSchema: {
       query: z.string().min(1).describe("Customer email or name to search for"),
     },
@@ -208,6 +210,37 @@ server.registerTool(
       const result = toSearchCustomersResult(query, customers);
       return {
         content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+      };
+    } catch (err) {
+      return errorResult(err);
+    }
+  },
+);
+
+server.registerTool(
+  "get_customer",
+  {
+    title: "Get customer profile",
+    description:
+      "Fetch a customer's profile by numeric customer ID (from search_customers): current " +
+      "billing/shipping address on file, whether they're a paying customer, and account " +
+      "signup date. For their purchase/lending history, use get_customer_orders instead. " +
+      "Requires WC_CONSUMER_KEY/WC_CONSUMER_SECRET to be configured; reveals customer PII.",
+    inputSchema: {
+      customerId: z.number().int().positive().describe("Numeric customer ID"),
+    },
+  },
+  async ({ customerId }) => {
+    try {
+      const wcCustomer = await ordersClient.getCustomerById(customerId);
+      if (!wcCustomer) {
+        return {
+          isError: true,
+          content: [{ type: "text", text: `No customer found for customerId=${customerId}.` }],
+        };
+      }
+      return {
+        content: [{ type: "text", text: JSON.stringify(toCustomerDetail(wcCustomer), null, 2) }],
       };
     } catch (err) {
       return errorResult(err);

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { OrdersClient, toCustomerOrdersResult, toSearchCustomersResult } from "./ordersClient.js";
+import { OrdersClient, toCustomerDetail, toCustomerOrdersResult, toSearchCustomersResult } from "./ordersClient.js";
 import { KvartiraBooksApiError } from "./errors.js";
 import { borrowOrder, customer, purchaseOrder } from "./__fixtures__/orders.js";
 
@@ -16,6 +16,22 @@ describe("toSearchCustomersResult", () => {
     expect(result.customers).toEqual([
       { id: 4821, name: "Jane Doe", email: "jane.doe@example.com", phone: "5551234567" },
     ]);
+  });
+});
+
+describe("toCustomerDetail", () => {
+  it("maps profile fields alongside billing and shipping addresses", () => {
+    const detail = toCustomerDetail(customer);
+    expect(detail).toMatchObject({
+      id: 4821,
+      name: "Jane Doe",
+      email: "jane.doe@example.com",
+      phone: "5551234567",
+      isPayingCustomer: true,
+      dateCreated: "2025-01-15T10:00:00",
+      billingAddress: { name: "Jane Doe", address1: "123 Main St", city: "Brooklyn" },
+      shippingAddress: { name: "Jane Doe", address1: "123 Main St", city: "Brooklyn" },
+    });
   });
 });
 
@@ -121,6 +137,33 @@ describe("OrdersClient", () => {
     const client = new OrdersClient({ fetchImpl, consumerKey: "ck_x", consumerSecret: "cs_x" });
 
     await expect(client.searchCustomers("jane")).rejects.toBeInstanceOf(KvartiraBooksApiError);
+  });
+
+  it("getCustomerById returns null on 404", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(new Response("", { status: 404 }));
+    const client = new OrdersClient({ fetchImpl, consumerKey: "ck_x", consumerSecret: "cs_x" });
+
+    expect(await client.getCustomerById(1)).toBeNull();
+  });
+
+  it("getCustomerById requests the customer by id and sends auth", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(customer));
+    const client = new OrdersClient({ fetchImpl, consumerKey: "ck_x", consumerSecret: "cs_x" });
+
+    const result = await client.getCustomerById(4821);
+
+    expect(result).toEqual(customer);
+    const calledUrl = fetchImpl.mock.calls[0][0] as string;
+    expect(calledUrl).toContain("/customers/4821");
+    const options = fetchImpl.mock.calls[0][1] as RequestInit;
+    expect((options.headers as Record<string, string>).Authorization).toBeDefined();
+  });
+
+  it("getCustomerById throws KvartiraBooksApiError on a non-OK response", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(new Response("", { status: 500, statusText: "Server Error" }));
+    const client = new OrdersClient({ fetchImpl, consumerKey: "ck_x", consumerSecret: "cs_x" });
+
+    await expect(client.getCustomerById(4821)).rejects.toBeInstanceOf(KvartiraBooksApiError);
   });
 
   it("getCustomerOrders reads pagination headers and forwards customer/status/paging params", async () => {

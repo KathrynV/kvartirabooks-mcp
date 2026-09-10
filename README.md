@@ -73,7 +73,7 @@ same `-L`-suffix `availability` convention as the books tools.
 #### `search_customers`
 
 Look up a customer by exact email or fuzzy name match, returning their
-numeric ID for use with `get_customer_orders`.
+numeric ID for use with `get_customer` and `get_customer_orders`.
 
 | param | type | notes |
 |---|---|---|
@@ -83,6 +83,12 @@ Always queries with `role=all` — WooCommerce's REST API defaults to
 `role=customer`, which silently excludes real, paying customers registered
 under a different WordPress role (this store has some under a custom
 `volshebniki` role).
+
+#### `get_customer`
+
+Fetch a customer's profile by numeric `customerId`: current billing/shipping
+address on file, `isPayingCustomer`, and account signup date. For their
+purchase/lending history, use `get_customer_orders` instead.
 
 #### `get_customer_orders`
 

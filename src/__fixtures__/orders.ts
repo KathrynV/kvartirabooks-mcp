@@ -8,6 +8,8 @@ export const customer: WcCustomer = {
   email: "jane.doe@example.com",
   first_name: "Jane",
   last_name: "Doe",
+  date_created: "2025-01-15T10:00:00",
+  is_paying_customer: true,
   billing: {
     first_name: "Jane",
     last_name: "Doe",
@@ -20,6 +22,17 @@ export const customer: WcCustomer = {
     country: "US",
     email: "jane.doe@example.com",
     phone: "5551234567",
+  },
+  shipping: {
+    first_name: "Jane",
+    last_name: "Doe",
+    company: "",
+    address_1: "123 Main St",
+    address_2: "",
+    city: "Brooklyn",
+    state: "NY",
+    postcode: "11201",
+    country: "US",
   },
 };
 
