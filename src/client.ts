@@ -8,6 +8,7 @@ import type {
 import { KvartiraBooksApiError } from "./errors.js";
 import { decodeHtmlEntities, stripHtml } from "./html.js";
 import { deriveAvailabilityFromSku } from "./availability.js";
+import { USER_AGENT } from "./userAgent.js";
 
 const DEFAULT_BASE_URL = "https://kvartirabooks.org/wp-json/wc/store/v1";
 
@@ -37,7 +38,7 @@ export class KvartiraBooksClient {
     url.searchParams.set("page", String(params.page ?? 1));
     url.searchParams.set("per_page", String(params.perPage ?? 10));
 
-    const res = await this.fetchImpl(url.toString());
+    const res = await this.fetchImpl(url.toString(), { headers: { "User-Agent": USER_AGENT } });
     if (!res.ok) {
       throw new KvartiraBooksApiError(
         `Search request failed: ${res.status} ${res.statusText}`,
@@ -52,7 +53,7 @@ export class KvartiraBooksClient {
 
   async getProductById(id: number): Promise<WcStoreProduct | null> {
     const url = `${this.baseUrl}/products/${id}`;
-    const res = await this.fetchImpl(url);
+    const res = await this.fetchImpl(url, { headers: { "User-Agent": USER_AGENT } });
     if (res.status === 404) {
       return null;
     }
@@ -68,7 +69,7 @@ export class KvartiraBooksClient {
   async getProductBySku(sku: string): Promise<WcStoreProduct | null> {
     const url = new URL(`${this.baseUrl}/products`);
     url.searchParams.set("sku", sku);
-    const res = await this.fetchImpl(url.toString());
+    const res = await this.fetchImpl(url.toString(), { headers: { "User-Agent": USER_AGENT } });
     if (!res.ok) {
       throw new KvartiraBooksApiError(
         `Get product by SKU request failed: ${res.status} ${res.statusText}`,

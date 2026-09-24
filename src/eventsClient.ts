@@ -10,6 +10,7 @@ import type {
 } from "./eventTypes.js";
 import { KvartiraBooksApiError } from "./errors.js";
 import { decodeHtmlEntities, stripHtml } from "./html.js";
+import { USER_AGENT } from "./userAgent.js";
 
 const DEFAULT_BASE_URL = "https://kvartirabooks.org/wp-json";
 
@@ -51,7 +52,7 @@ export class EventsClient {
     url.searchParams.set("page", String(params.page ?? 1));
     url.searchParams.set("per_page", String(params.perPage ?? 10));
 
-    const res = await this.fetchImpl(url.toString());
+    const res = await this.fetchImpl(url.toString(), { headers: { "User-Agent": USER_AGENT } });
     if (!res.ok) {
       throw new KvartiraBooksApiError(
         `Event search request failed: ${res.status} ${res.statusText}`,
@@ -65,7 +66,7 @@ export class EventsClient {
   // regardless of date, but no schedule/venue/price fields.
   async getEventPost(id: number): Promise<EtnPost | null> {
     const url = `${this.baseUrl}/wp/v2/etn/${id}?_embed=1`;
-    const res = await this.fetchImpl(url);
+    const res = await this.fetchImpl(url, { headers: { "User-Agent": USER_AGENT } });
     if (res.status === 404) {
       return null;
     }

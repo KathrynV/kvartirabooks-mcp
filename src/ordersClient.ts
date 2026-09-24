@@ -13,6 +13,7 @@ import type {
 } from "./orderTypes.js";
 import { KvartiraBooksApiError } from "./errors.js";
 import { deriveAvailabilityFromSku } from "./availability.js";
+import { USER_AGENT } from "./userAgent.js";
 
 const DEFAULT_BASE_URL = "https://kvartirabooks.org/wp-json/wc/v3";
 
@@ -69,7 +70,7 @@ export class OrdersClient {
       );
     }
     const token = Buffer.from(`${this.consumerKey}:${this.consumerSecret}`).toString("base64");
-    return { Authorization: `Basic ${token}` };
+    return { Authorization: `Basic ${token}`, "User-Agent": USER_AGENT };
   }
 
   // GET /wc/v3/customers?search=... or ?email=...
