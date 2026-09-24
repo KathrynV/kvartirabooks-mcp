@@ -8,7 +8,8 @@ RUN npm run build
 FROM node:22-alpine
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev && npm i -g supergateway@latest
 COPY --from=build /app/dist ./dist
 
-ENTRYPOINT ["node", "dist/index.js"]
+EXPOSE 8000
+ENTRYPOINT ["supergateway", "--stdio", "node dist/index.js", "--outputTransport", "streamableHttp", "--stateful", "--port", "8000", "--streamableHttpPath", "/mcp", "--cors"]
